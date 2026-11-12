@@ -2,3 +2,4 @@ import {request,post} from './client';import type {Run} from '../types/domain';
 export const list=()=>request<Run[]>('/runs'+'');
 export const create=(data:unknown)=>post<Run>('/runs',data);
 export const detail=(id:number)=>request<Run>('/runs/'+id);
+export const resume=(id:number)=>post<Run>('/runs/'+id+'/resume',undefined);

@@ -1,14 +1,25 @@
+"""Proposal lifecycle with archive-gated creation and export."""
 import csv,io
 from sqlalchemy import select
 from fastapi import HTTPException
 from src.models import ReviewProposal
 from src.services.run_service import get_run
+from src.services.archive import inspect_run
+
+def _verified_result(run):
+    """Return the run result only when every repeat is present and verified."""
+    progress=inspect_run(run.status,run.result,run.snapshot,run.ridge,run.repeats,run.seed)
+    if progress['state']=='corrupt':
+        raise HTTPException(409,'重复留档损坏，不能作为补票依据：'+progress['message'])
+    if progress['state']!='completed':
+        raise HTTPException(409,f'重复留档未完成（{progress["completed"]}/{progress["repeats"]}），不能作为补票依据')
+    return run.result
 
 def list_proposals(db):return db.scalars(select(ReviewProposal).order_by(ReviewProposal.id.desc())).all()
 def create_proposal(db,data):
     run=get_run(db,data.run_id)
-    if run.status!='completed':raise HTTPException(409,'只可依据已完成的拟合提出补票建议')
-    ids={c['id'] for c in run.result['concepts']}
+    result=_verified_result(run)
+    ids={c['id'] for c in result['concepts']}
     if data.left_id==data.right_id or data.left_id not in ids or data.right_id not in ids:raise HTTPException(422,'补票须选择本次快照中的两项不同作品')
     if db.scalar(select(ReviewProposal).where(ReviewProposal.name==data.name)):raise HTTPException(409,'提案名称已存在')
     item=ReviewProposal(**data.model_dump());db.add(item);db.commit();return item
@@ -24,12 +35,13 @@ def export_proposal(db,id):
     item=db.get(ReviewProposal,id)
     if not item:raise HTTPException(404,'补票提案不存在')
     if item.status!='approved':raise HTTPException(409,'仅已批准的补票提案可以分发')
-    run=get_run(db,item.run_id);result=run.result;out=io.StringIO();writer=csv.writer(out)
-    writer.writerow(['proposal','reviewer','note','fingerprint','ridge','repeats','seed','left_id','right_id','extra_votes','scope'])
-    writer.writerow([item.name,item.reviewed_by,item.reviewer_note,result['fingerprint'],run.ridge,run.repeats,run.seed,item.left_id,item.right_id,item.extra_votes,'补充评议调度；不自动立项；bootstrap不是后验'])
+    run=get_run(db,item.run_id);result=_verified_result(run)
+    out=io.StringIO();writer=csv.writer(out)
+    writer.writerow(['proposal','reviewer','note','fingerprint','archive_digest','archive_repeats','ridge','repeats','seed','left_id','right_id','extra_votes','scope'])
+    writer.writerow([item.name,item.reviewed_by,item.reviewer_note,result['fingerprint'],result['archive']['draws_digest'],result['archive']['repeats_completed'],run.ridge,run.repeats,run.seed,item.left_id,item.right_id,item.extra_votes,'补充评议调度；不自动立项；bootstrap不是后验'])
     writer.writerow(['code','title','ability_sum_zero','average_rank','rank_q025','rank_q975','first_place_share','rank_frequency'])
     for c in result['concepts']:writer.writerow([c['code'],c['title'],c['ability'],c['rank'],c['rank_low'],c['rank_high'],c['first_share'],str(c['rank_frequency'])])
     writer.writerow(['left_code','right_code','probability_model'])
     for i,c in enumerate(result['concepts']):
         for j in range(i+1,len(result['concepts'])):writer.writerow([c['code'],result['concepts'][j]['code'],result['probabilities'][i][j]])
-    return '\ufeff'+out.getvalue()
+    return '﻿'+out.getvalue()

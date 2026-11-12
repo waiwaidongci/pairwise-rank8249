@@ -1,1 +1,1 @@
-export const roles={admin:'策展负责人',analyst:'策展分析员',viewer:'委托方观察员'};export const runStatus={queued:'等待演算',running:'正在重拟合',completed:'已完成',failed:'校验未通过'};export const proposalStatus={draft:'待负责人审阅',approved:'同意补充评议',rejected:'退回修订'};
+export const roles={admin:'策展负责人',analyst:'策展分析员',viewer:'委托方观察员'};export const runStatus={queued:'等待演算',running:'正在重拟合',completed:'已完成',failed:'校验未通过'};export const proposalStatus={draft:'待负责人审阅',approved:'同意补充评议',rejected:'退回修订'};export const archiveState={empty:'尚未开始',journal:'可恢复的留档',completed:'已校验完整',corrupt:'留档损坏'};

@@ -60,7 +60,7 @@ import {useEffect,useState} from 'react';import {studyStore,loadStudies,saveStud
 <div>
 <span>Ⅲ</span>
 <h3>补充评议</h3>
-<p>{runs.filter(r=>r.status==='completed').length}项完成研究可作为补票依据</p>
+<p>{runs.filter(r=>r.status==='completed'&&r.progress?.state==='completed').length}项完成研究可作为补票依据</p>
 <a href="#/proposals">提交人工审阅 →</a>
 </div>
 </section>{canEdit(user)&&<section className="registry">

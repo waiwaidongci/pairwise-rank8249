@@ -1,12 +1,13 @@
 import {useEffect,useState} from 'react';
 import {researchStore,loadRuns,loadProposals,addProposal,reviewProposal} from '../stores/research';
 import {authStore,canEdit} from '../stores/auth';import {useTask} from '../hooks/useTask';
-import {download,date} from '../utils/format';import PageHeading from '../components/common/PageHeading';
+import {download,date} from '../utils/format';import {verified} from '../types/domain';import PageHeading from '../components/common/PageHeading';
 import ErrorNotice from '../components/common/ErrorNotice';import StatusBadge from '../components/common/StatusBadge';
 export default function Proposals(){const {runs,proposals}=researchStore.use(),{user}=authStore.use(),{error,busy,perform}=useTask(),[runId,setRunId]=useState(0),[message,setMessage]=useState('');
-useEffect(()=>{perform(loadRuns);perform(loadProposals)},[]);const completed=runs.filter(r=>r.status==='completed'),run=completed.find(r=>r.id===runId)||completed[0],concepts=run?.result.concepts||[];
+useEffect(()=>{perform(loadRuns);perform(loadProposals)},[]);const completed=runs.filter(verified),run=completed.find(r=>r.id===runId)||completed[0],concepts=run?.result.concepts||[],skipped=runs.filter(r=>r.status==='completed'&&!verified(r));
 return <><PageHeading no="05" title="补票审阅" sub="把名次变化转化为可复核的补充评议，再由负责人决定是否安排。"/>
 <ErrorNotice error={error}/>{message&&<p className="success" role="status">{message}</p>}
+{skipped.length>0&&<p className="archive-warning" role="status">{skipped.map(r=>`#${r.id} ${r.name}`).join('、')} 的重复留档未齐全或未通过校验，不能用于补票或分发；请到拟合工作台查看进度或损坏原因。</p>}
 <div className="proposal-spread"><section><h2 className="ruled-title">写下一份补充评议提案</h2>
 {!run?<div className="empty"><p>完成至少一项拟合后，才能选择快照内的作品。</p><a href="#/runs">先提交一次研究 →</a></div>:<form key={run.id} onSubmit={e=>{e.preventDefault();const f=e.currentTarget,d=new FormData(f);perform(async()=>{await addProposal({run_id:run.id,name:d.get('name'),left_id:Number(d.get('left_id')),right_id:Number(d.get('right_id')),extra_votes:Number(d.get('extra_votes')),rationale:d.get('rationale')});setMessage('补票提案已留档，等待策展负责人审阅。');f.reset()})}}>
 <label>依据的完成研究<select aria-label="提案依据研究" value={run.id} onChange={e=>setRunId(Number(e.target.value))}>{completed.map(r=><option value={r.id} key={r.id}>#{r.id} {r.name}</option>)}</select></label>

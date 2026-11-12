@@ -15,3 +15,9 @@ class RankingRun(Base):
     result:Mapped[dict]=mapped_column(JSON,default=dict)
     error:Mapped[str]=mapped_column(String(600),default='')
     created_at:Mapped[datetime]=mapped_column(DateTime,default=datetime.utcnow)
+
+    @property
+    def progress(self):
+        """Verified archive progress; only a verified archive is complete."""
+        from src.services.archive import inspect_run
+        return inspect_run(self.status,self.result,self.snapshot,self.ridge,self.repeats,self.seed)

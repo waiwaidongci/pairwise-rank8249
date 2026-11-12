@@ -10,3 +10,5 @@ def index(db=Depends(get_db),user=Depends(current_user)):return controller.index
 def create(data:RunInput,db=Depends(get_db),user=Depends(editor)):return controller.create(db,data)
 @router.get('/{id}',response_model=RunOut)
 def detail(id:int,db=Depends(get_db),user=Depends(current_user)):return controller.detail(db,id)
+@router.post('/{id}/resume',response_model=RunOut)
+def resume(id:int,db=Depends(get_db),user=Depends(editor)):return controller.resume(db,id)
